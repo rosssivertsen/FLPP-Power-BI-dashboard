@@ -1,0 +1,35 @@
+# Power BI
+*.pbix.lock
+*.pbix.tmp
+*.pbix.backup
+
+# Data files (uncomment if you don't want to track data files)
+# *.csv
+# *.xlsx
+# *.xls
+# *.json
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
