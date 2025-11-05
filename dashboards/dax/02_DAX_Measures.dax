@@ -1,0 +1,355 @@
+// ============================================================================
+// FLPP Power BI Dashboard - DAX Measures
+// Key Performance Indicators (KPIs) and Calculated Measures
+// ============================================================================
+// This file contains all DAX measure definitions for the FLPP Dashboard
+// Copy these measures into Power BI Desktop's model view
+// ============================================================================
+
+// ============================================================================
+// 1. SALES & GROWTH KPIs
+// ============================================================================
+
+// Monthly Sales per Rep
+Monthly Sales per Rep = 
+AVERAGEX(
+    VALUES('Sales by Tech'[Primary Sales Rep]),
+    CALCULATE(SUM('Sales by Tech'[Contract Value]))
+)
+
+// Total Sales
+Total Sales = 
+SUM('Sales by Tech'[Contract Value])
+
+// Recurring Sales % (assuming Category contains recurring indicators)
+Recurring Sales % = 
+VAR TotalSales = [Total Sales]
+VAR RecurringSales = 
+    CALCULATE(
+        [Total Sales],
+        FILTER(
+            'Sales by Tech',
+            CONTAINSSTRING('Sales by Tech'[Category], "Recurring") ||
+            CONTAINSSTRING('Sales by Tech'[Category], "Monthly") ||
+            CONTAINSSTRING('Sales by Tech'[Category], "Bi-Monthly") ||
+            CONTAINSSTRING('Sales by Tech'[Category], "Quarterly")
+        )
+    )
+RETURN
+    DIVIDE(RecurringSales, TotalSales, 0)
+
+// Organic Growth (Year-over-Year)
+Organic Growth YoY = 
+VAR CurrentYearSales = 
+    CALCULATE(
+        [Total Sales],
+        FILTER(
+            ALL('Date'[Year]),
+            'Date'[Year] = YEAR(TODAY())
+        )
+    )
+VAR PreviousYearSales = 
+    CALCULATE(
+        [Total Sales],
+        FILTER(
+            ALL('Date'[Year]),
+            'Date'[Year] = YEAR(TODAY()) - 1
+        )
+    )
+RETURN
+    DIVIDE(CurrentYearSales - PreviousYearSales, PreviousYearSales, 0)
+
+// Cancellation Rate
+Cancellation Rate = 
+VAR TotalSales = [Total Sales]
+VAR LostSales = SUM('Lost Sales'[Contract Value])
+RETURN
+    DIVIDE(LostSales, TotalSales + LostSales, 0)
+
+// Lost Sales Amount
+Lost Sales Amount = 
+SUM('Lost Sales'[Contract Value])
+
+// ============================================================================
+// 2. TECHNICIAN PERFORMANCE KPIs
+// ============================================================================
+
+// Completion Rate (Services Completed vs. Assigned)
+// Note: This assumes all rows in Completed Services are completed
+// If you have assigned services data, adjust accordingly
+Completion Rate = 
+VAR CompletedServices = COUNTROWS('Completed Services')
+VAR AssignedServices = CompletedServices  // Adjust if you have assigned services table
+RETURN
+    DIVIDE(CompletedServices, AssignedServices, 1)
+
+// Tech Review Score (Average)
+Tech Review Score = 
+AVERAGE('Tech Reviews'[Average Star Rating])
+
+// Tech Review Score (Weighted by number of ratings)
+Tech Review Score Weighted = 
+VAR TotalRatings = SUM('Tech Reviews'[Total Ratings])
+VAR WeightedScore = 
+    SUMX(
+        'Tech Reviews',
+        'Tech Reviews'[Average Star Rating] * 'Tech Reviews'[Total Ratings]
+    )
+RETURN
+    DIVIDE(WeightedScore, TotalRatings, 0)
+
+// Recurring Service Ratio (% of recurring customers per tech)
+Recurring Service Ratio = 
+VAR TotalCustomers = DISTINCTCOUNT('Completed Services'[Customer Id])
+VAR RecurringCustomers = 
+    CALCULATE(
+        DISTINCTCOUNT('Completed Services'[Customer Id]),
+        FILTER(
+            'Completed Services',
+            RELATED('Customer Detail'[Auto Pay Flag]) = TRUE
+        )
+    )
+RETURN
+    DIVIDE(RecurringCustomers, TotalCustomers, 0)
+
+// Service Accuracy / Callbacks
+// Note: This assumes callback services are identifiable in the data
+// Adjust the filter condition based on your callback identification method
+Callback Rate = 
+VAR TotalServices = COUNTROWS('Completed Services')
+VAR CallbackServices = 
+    CALCULATE(
+        COUNTROWS('Completed Services'),
+        FILTER(
+            'Completed Services',
+            CONTAINSSTRING('Completed Services'[Type], "Callback") ||
+            CONTAINSSTRING('Completed Services'[Name], "Callback") ||
+            CONTAINSSTRING('Completed Services'[Category], "Callback")
+        )
+    )
+RETURN
+    DIVIDE(CallbackServices, TotalServices, 0)
+
+// Service Accuracy (1 - Callback Rate)
+Service Accuracy = 1 - [Callback Rate]
+
+// ============================================================================
+// 3. FINANCIAL METRICS KPIs
+// ============================================================================
+
+// Total Revenue (from Financials table)
+// Note: Adjust field names based on actual Financials table structure
+Total Revenue = 
+SUM('Financials'[Revenue])  // Adjust field name as needed
+
+// Payroll % of Revenue
+Payroll % of Revenue = 
+VAR Revenue = [Total Revenue]
+VAR Payroll = SUM('Financials'[Payroll])  // Adjust field name as needed
+RETURN
+    DIVIDE(Payroll, Revenue, 0)
+
+// Chemical Spend %
+Chemical Spend % = 
+VAR Revenue = [Total Revenue]
+VAR ChemicalSpend = SUM('Financials'[Chemical Spend])  // Adjust field name as needed
+RETURN
+    DIVIDE(ChemicalSpend, Revenue, 0)
+
+// EBITDA Margin
+EBITDA Margin = 
+VAR Revenue = [Total Revenue]
+VAR EBITDA = SUM('Financials'[EBITDA])  // Adjust field name as needed
+RETURN
+    DIVIDE(EBITDA, Revenue, 0)
+
+// Revenue Growth YoY
+Revenue Growth YoY = 
+VAR CurrentYearRevenue = 
+    CALCULATE(
+        [Total Revenue],
+        FILTER(
+            ALL('Date'[Year]),
+            'Date'[Year] = YEAR(TODAY())
+        )
+    )
+VAR PreviousYearRevenue = 
+    CALCULATE(
+        [Total Revenue],
+        FILTER(
+            ALL('Date'[Year]),
+            'Date'[Year] = YEAR(TODAY()) - 1
+        )
+    )
+RETURN
+    DIVIDE(CurrentYearRevenue - PreviousYearRevenue, PreviousYearRevenue, 0)
+
+// ============================================================================
+// 4. CUSTOMER & PAYMENT KPIs
+// ============================================================================
+
+// Auto Pay Enrollment %
+Auto Pay Enrollment % = 
+VAR TotalCustomers = COUNTROWS('Customer Detail')
+VAR AutoPayCustomers = 
+    CALCULATE(
+        COUNTROWS('Customer Detail'),
+        'Customer Detail'[Auto Pay Flag] = TRUE
+    )
+RETURN
+    DIVIDE(AutoPayCustomers, TotalCustomers, 0)
+
+// Average Customer Review Score
+Avg Customer Review = 
+AVERAGE('Customer Reviews'[Overall Star Rating])
+
+// Average Customer Review Score (Weighted)
+Avg Customer Review Weighted = 
+VAR TotalReviews = COUNTROWS('Customer Reviews')
+VAR WeightedScore = 
+    SUMX(
+        'Customer Reviews',
+        'Customer Reviews'[Overall Star Rating]
+    )
+RETURN
+    DIVIDE(WeightedScore, TotalReviews, 0)
+
+// ============================================================================
+// 5. FLEET & SAFETY KPIs
+// ============================================================================
+
+// Fleet Safety Grade
+// Note: This is a placeholder - adjust based on actual safety data source
+Fleet Safety Grade = 
+// If you have a safety ratings table, use:
+// AVERAGE('Safety Ratings'[Grade])
+// Otherwise, set as manual input or calculate from incidents
+0  // Placeholder - to be implemented based on data source
+
+// Total YTD Revenue
+Total YTD Revenue = 
+TOTALYTD(
+    [Total Revenue],
+    'Date'[Date]
+)
+
+// Average Monthly Production per Tech
+Avg Monthly Production per Tech = 
+VAR TotalServiceRevenue = SUM('Completed Services'[Invoice Amount])
+VAR DistinctTechs = DISTINCTCOUNT('Completed Services'[Tech Name])
+VAR MonthsInPeriod = 
+    CALCULATE(
+        DISTINCTCOUNT('Date'[Year Month]),
+        ALLSELECTED('Date')
+    )
+RETURN
+    DIVIDE(
+        DIVIDE(TotalServiceRevenue, MonthsInPeriod, 0),
+        DistinctTechs,
+        0
+    )
+
+// Recurring % of Sales (same as Recurring Sales % above)
+Recurring % of Sales = [Recurring Sales %]
+
+// ============================================================================
+// 6. SUPPORTING MEASURES
+// ============================================================================
+
+// % to Target (Generic measure - use with specific target values)
+% to Target = 
+VAR Actual = [Total Sales]  // Replace with measure of interest
+VAR Target = [Target Value]  // Create separate target measures
+RETURN
+    DIVIDE(Actual, Target, 0)
+
+// YTD Actual (Generic cumulative measure)
+YTD Actual = 
+TOTALYTD(
+    [Total Sales],  // Replace with measure of interest
+    'Date'[Date]
+)
+
+// Previous Year Same Period
+Previous Year Same Period = 
+CALCULATE(
+    [Total Sales],  // Replace with measure of interest
+    SAMEPERIODLASTYEAR('Date'[Date])
+)
+
+// Month-over-Month Growth
+MoM Growth = 
+VAR CurrentMonth = [Total Sales]
+VAR PreviousMonth = 
+    CALCULATE(
+        [Total Sales],
+        DATEADD('Date'[Date], -1, MONTH)
+    )
+RETURN
+    DIVIDE(CurrentMonth - PreviousMonth, PreviousMonth, 0)
+
+// ============================================================================
+// 7. TARGET MEASURES (Placeholders - Set actual target values)
+// ============================================================================
+
+// Sales Target
+Sales Target = 1000000  // Set actual target value
+
+// Tech Review Target
+Tech Review Target = 4.5  // Set actual target value (out of 5)
+
+// Auto Pay Target
+Auto Pay Target = 0.80  // 80% target
+
+// EBITDA Margin Target
+EBITDA Margin Target = 0.20  // 20% target
+
+// ============================================================================
+// 8. STATUS INDICATORS (Traffic Light Logic)
+// ============================================================================
+
+// Sales Status (Green ≥ 100%, Yellow 90-99%, Red < 90%)
+Sales Status = 
+VAR PctToTarget = DIVIDE([Total Sales], [Sales Target], 0)
+RETURN
+    SWITCH(
+        TRUE(),
+        PctToTarget >= 1.0, "Green",
+        PctToTarget >= 0.90, "Yellow",
+        "Red"
+    )
+
+// Tech Review Status
+Tech Review Status = 
+VAR Score = [Tech Review Score]
+RETURN
+    SWITCH(
+        TRUE(),
+        Score >= 4.5, "Green",
+        Score >= 4.0, "Yellow",
+        "Red"
+    )
+
+// Auto Pay Status
+Auto Pay Status = 
+VAR Enrollment = [Auto Pay Enrollment %]
+RETURN
+    SWITCH(
+        TRUE(),
+        Enrollment >= 0.80, "Green",
+        Enrollment >= 0.70, "Yellow",
+        "Red"
+    )
+
+// EBITDA Status
+EBITDA Status = 
+VAR Margin = [EBITDA Margin]
+RETURN
+    SWITCH(
+        TRUE(),
+        Margin >= 0.20, "Green",
+        Margin >= 0.15, "Yellow",
+        "Red"
+    )
+
+
